@@ -1,0 +1,78 @@
+import numpy as np  #import library
+import pandas as pd
+from google.colab import drive
+
+drive.mount('/smuai2024')   # mount drive
+
+#upload file
+from google.colab import files
+files.upload()
+
+#read csv file
+#python에서 쓸 수 있는 data format으로 변환 : pandas
+nbastat = pd.read_csv('nbastat2022.csv')
+nbastat
+
+#count / 줄 수 세기 - m : 데이터의 수, sample의 수
+m = len(nbastat)
+print(m)
+
+#feature selection --> nbastat 에서 FGA(던진 횟수), FGM(넣은 횟수)만 추출
+X = nbastat[['FGA']]
+Y = nbastat[['FGM']]
+print(X)
+print(Y)
+
+#pandas에서 결측값을 해소하는 최소 함수 : fillna
+X = X.fillna(0)
+Y = Y.fillna(0)
+type(X)
+
+#pandas의 dataframe --> np의 array로 변환
+X = (np.array(X)).reshape(m, 1)
+Y = (np.array(Y)).reshape(m, 1)
+print(X)
+type(X)
+print(X.shape)
+
+#그려보기
+import matplotlib.pyplot as plt
+plt.plot(X, Y, '.b')
+plt.xlabel("FGA")
+plt.ylabel("FGM")
+
+# 준비-학습률 : learning_rate
+learning_rate = 0.0001
+#반복 횟수 : epochs
+n_iter = 2000
+
+# theta와 theta의 미분 (gradient)를 초기화 --> 0으로 초기화
+theta = np.zeros((2,1))
+gradients = np.zeros((2,1))
+
+print(theta.shape)
+
+#변수 설정 - Xb를 설정 --> Xb = (1, X)의 결합X
+X0 = np.ones((m, 1))
+Xb = np.c_[X0, X]
+
+print(Xb.shape)
+print(theta.shape)
+print(Y.shape)
+
+#경사 하강법
+for i in range(n_iter):
+  # 1. Xb * theta --> Xb.dot(theta) --> (249,2) x (2,1) --> (249,1)
+  # 2. Xb * theta - Y --> Xb.dot(theta) - Y --> (249,1) - (249,1) --> (249,1)
+  # 3. (Xb * theta - Y)*Xb -->  (249,1) * (249,2)
+  # --> Xb^T * (Xb * theta - Y) -> (2,249) * (249,1) --> (2,1)
+  gradients = (1.0/m)*Xb.T.dot(Xb.dot(theta)-Y) #(2,1)
+  theta = theta - learning_rate * gradients
+
+theta
+
+#결과 가시화 - (X, Y)의 데이터와 Y = theta_0  + X*theta_1
+Y_pred = Xb.dot(theta)
+
+plt.plot(X, Y_pred, color = "Red")
+plt.plot(X, Y, ".b")

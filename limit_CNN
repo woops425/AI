@@ -1,0 +1,147 @@
+# ✅ 개선된 CNN-LSTM 학습 코드 (train loss 감소 목표)
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, Subset
+from sklearn.model_selection import train_test_split
+from collections import Counter
+from torchvision import transforms
+from torch.nn import CrossEntropyLoss
+from PIL import Image
+import os
+
+
+# ✅ Dataset 클래스 (기존과 동일)
+class SequenceImageDataset(Dataset):
+    def __init__(self, root_dir, seq_len=15, image_size=(64, 64), max_per_class=None):
+        self.samples = []
+        self.seq_len = seq_len
+        self.image_size = image_size
+        self.label_to_idx = {}
+        self.transform = transforms.Compose([
+            transforms.Resize(image_size),
+            transforms.RandomHorizontalFlip(),  # augmentation 추가
+            transforms.ToTensor()
+        ])
+
+        label_folders = []
+        for mode in ['idle', 'press']:
+            mode_dir = os.path.join(root_dir, mode)
+            if not os.path.isdir(mode_dir):
+                continue
+            for label in os.listdir(mode_dir):
+                label_path = os.path.join(mode_dir, label)
+                if os.path.isdir(label_path):
+                    label_folders.append((label, label_path))
+
+        label_folders = sorted(label_folders)
+        self.label_to_idx = {label: idx for idx, (label, _) in enumerate(label_folders)}
+
+        for label, path in label_folders:
+            seq_dirs = [os.path.join(path, d) for d in os.listdir(path) if d.startswith("seq_")]
+            if max_per_class:
+                seq_dirs = seq_dirs[:max_per_class]
+            for seq in seq_dirs:
+                self.samples.append((seq, label))
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        seq_dir, label = self.samples[idx]
+        images = []
+        for i in range(self.seq_len):
+            img_path = os.path.join(seq_dir, f"{i}.jpg")
+            image = Image.open(img_path).convert("RGB")
+            image = self.transform(image)
+            images.append(image)
+        sequence = torch.stack(images)
+        label_idx = self.label_to_idx[label]
+        return sequence, label_idx
+
+# ✅ 모델 (CNN 채널 수 증가)
+class CNN_LSTM_Classifier(nn.Module):
+    def __init__(self, cnn_embed_dim=128, lstm_hidden_dim=64, num_classes=11):
+        super(CNN_LSTM_Classifier, self).__init__()
+        self.cnn = nn.Sequential(
+            nn.Conv2d(3, 64, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2)
+        )
+        self.flatten_dim = 128 * 16 * 16
+        self.fc_embed = nn.Linear(self.flatten_dim, cnn_embed_dim)
+        self.lstm = nn.LSTM(cnn_embed_dim, lstm_hidden_dim, batch_first=True)
+        self.classifier = nn.Linear(lstm_hidden_dim, num_classes)
+
+    def forward(self, x):
+        B, T, C, H, W = x.size()
+        features = []
+        for t in range(T):
+            out = self.cnn(x[:, t])
+            out = out.view(B, -1)
+            out = self.fc_embed(out)
+            features.append(out)
+        seq = torch.stack(features, dim=1)
+        _, (hn, _) = self.lstm(seq)
+        return self.classifier(hn[-1])
+
+# ✅ 데이터 로딩 및 클래스 가중치 계산
+dataset_dir = "/content/cnn-lstm-dataset01/dataset"
+dataset = SequenceImageDataset(dataset_dir, seq_len=15, image_size=(64, 64), max_per_class=30)
+label_counts = Counter([label for _, label in dataset.samples])
+total = sum(label_counts.values())
+weights = [total / label_counts[label] for label in sorted(label_counts)]
+class_weights = torch.tensor(weights).to("cuda" if torch.cuda.is_available() else "cpu")
+
+# 💾 기존 학습된 모델 불러오기
+model = CNN_LSTM_Classifier(num_classes=len(dataset.label_to_idx))
+uploaded = files.upload()
+model.load_state_dict(torch.load("cnn_lstm_limit_v4.pt"))
+model.to(device)
+
+# ✅ 모델 학습
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = CNN_LSTM_Classifier(num_classes=len(dataset.label_to_idx)).to(device)
+criterion = CrossEntropyLoss(weight=class_weights)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+
+train_idx, val_idx = train_test_split(list(range(len(dataset))), test_size=0.2, random_state=42)
+train_dataset = Subset(dataset, train_idx)
+val_dataset = Subset(dataset, val_idx)
+train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=0)
+val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=0)
+
+EPOCHS = 15
+for epoch in range(EPOCHS):
+    model.train()
+    total_loss = 0
+    for inputs, labels in train_loader:
+        inputs, labels = inputs.to(device), labels.to(device)
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss.item()
+
+    avg_train_loss = total_loss / len(train_loader)
+
+    # 검증
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for inputs, labels in val_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            preds = torch.argmax(outputs, dim=1)
+            correct += (preds == labels).sum().item()
+            total += labels.size(0)
+    val_acc = correct / total
+    print(f"[Epoch {epoch+1}/{EPOCHS}] | Train Loss: {avg_train_loss:.4f} | Val Acc: {val_acc:.4f}")
+
+# 모델 저장
+torch.save(model.state_dict(), "cnn_lstm_limit_v5.pt")
+print("학습 완료: cnn_lstm_limit_v5.pt")
+from google.colab import files
+files.download("cnn_lstm_limit_v5.pt")

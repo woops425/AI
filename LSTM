@@ -1,0 +1,102 @@
+from google.colab import files
+
+uploaded = files.upload()
+
+print("X shape:", X.shape)
+
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
+from sklearn.model_selection import train_test_split
+
+# 1. 하이퍼파라미터
+SEQ_LEN = 30
+INPUT_SIZE = 30
+HIDDEN_SIZE = 128
+NUM_CLASSES = 8
+EPOCHS = 30
+BATCH_SIZE = 32
+LEARNING_RATE = 0.001
+
+# 2. 데이터 로딩
+X = np.load('X_sequences.npy')  # (N, 30, 30)
+y = np.load('y_labels.npy')  # (N, )
+
+# 3. 학습/검증 분할
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 4. Dataset 클래스
+class SequenceDataset(Dataset):
+    def __init__(self, X, y):
+        self.X = torch.tensor(X, dtype=torch.float32)
+        self.y = torch.tensor(y, dtype=torch.long)
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        return self.X[idx], self.y[idx]
+
+train_dataset = SequenceDataset(X_train, y_train)
+val_dataset = SequenceDataset(X_val, y_val)
+
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+# 5. LSTM 모델 정의
+class LSTMClassifier(nn.Module):
+    def __init__(self, input_size, hidden_size, num_classes):
+        super(LSTMClassifier, self).__init__()
+        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
+        self.fc = nn.Linear(hidden_size, num_classes)
+
+    def forward(self, x):
+        _, (hn, _) = self.lstm(x)
+        out = self.fc(hn[-1])  # 마지막 hidden state만 사용
+        return out  # (배치, 클래스 수)
+
+model = LSTMClassifier(INPUT_SIZE, HIDDEN_SIZE, NUM_CLASSES)
+
+# 6. 손실 함수 + 옵티마이저
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+# 7. 학습 루프
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model.to(device)
+
+for epoch in range(EPOCHS):
+    model.train()
+    total_loss = 0
+    for inputs, labels in train_loader:
+        inputs, labels = inputs.to(device), labels.to(device)
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss.item()
+
+    avg_train_loss = total_loss / len(train_loader)
+
+    # 검증
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for inputs, labels in val_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            preds = torch.argmax(outputs, dim=1)
+            correct += (preds == labels).sum().item()
+            total += labels.size(0)
+
+    val_accuracy = correct / total
+
+    print(f"Epoch [{epoch+1}/{EPOCHS}] | Train Loss: {avg_train_loss:.4f} | Val Acc: {val_accuracy:.4f}")
+
+# 8. 모델 저장
+torch.save(model.state_dict(), 'lstm_classifier_vv0.pt')
+print("모델 저장 완료")  

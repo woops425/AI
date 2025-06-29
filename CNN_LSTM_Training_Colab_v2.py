@@ -106,3 +106,4 @@ for epoch in range(10):
         total += y.size(0)
     acc = correct / total * 100
     print(f"Epoch {epoch+1}, Loss: {total_loss:.4f}, Accuracy: {acc:.2f}%")
+

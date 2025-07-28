@@ -176,8 +176,6 @@ criterion = FocalLoss(alpha=0.25, gamma=2.0).to(device)
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 # 누적 학습할 경우, 이전에 저장한 모델 가중치 불러오기
-model.load_state_dict(torch.load("TCN_model_v2.pt"))
-print("이전 모델 가중치 로드 완료")
 uploaded = files.upload()
 
 # --- 학습 루프 ---
@@ -238,7 +236,7 @@ for epoch in range(EPOCHS):
 model.load_state_dict(best_model_wts)
 print("\n--- 학습 완료 및 최고 성능 모델 로드 ---")
 
-MODEL_SAVE_PATH = "TCN_model_v3.pt"
+MODEL_SAVE_PATH = "TCN_model.pt"
 torch.save(model.state_dict(), MODEL_SAVE_PATH)
 print(f"\n모델 저장 완료: {MODEL_SAVE_PATH}")
 

@@ -647,5 +647,5 @@ for epoch in range(config.FINAL_EPOCHS):
         print(f"  -> 🎉 New best model saved with F1-Score: {best_f1_score:.4f}")
 
 print("-" * 50)
-print(f"✅ 3단계 완료: 최종 모델이 '{FINAL_MODEL_PATH}'에 성공적으로 저장되었습니다.")
+print(f"3단계 완료: 최종 모델이 '{FINAL_MODEL_PATH}'에 성공적으로 저장되었습니다.")
 print(f"최고 검증 F1-Score: {best_f1_score:.4f}")

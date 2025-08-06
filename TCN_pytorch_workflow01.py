@@ -387,7 +387,7 @@ BASELINE_MODEL_PATH = 'baseline_model_tcn.pt'
 torch.save(baseline_model.state_dict(), BASELINE_MODEL_PATH)
 
 print("-" * 50)
-print(f"✅ 1단계 완료: 기준 모델이 '{BASELINE_MODEL_PATH}'에 성공적으로 저장되었습니다.")
+print(f"1단계 완료: 기준 모델이 '{BASELINE_MODEL_PATH}'에 성공적으로 저장되었습니다.")
 
 # ##############################################################################
 # @title 셀 7: T-SMOTE 알고리즘 함수 정의
@@ -527,7 +527,7 @@ class PyTorchModelWrapper:
 print("PyTorch 모델 래퍼 클래스가 정의되었습니다.")
 
 # ##############################################################################
-# @title 셀 9: 🚀 2단계 - T-SMOTE 데이터셋 생성 실행
+# @title 셀 9: 2단계 - T-SMOTE 데이터셋 생성 실행
 # ##############################################################################
 print("--- 2단계: T-SMOTE 데이터셋 생성 시작 ---")
 
@@ -570,7 +570,7 @@ np.savez_compressed(
 print("-" * 50)
 print(f"X Resampled Shape: {X_resampled.shape}")
 print(f"y Resampled Shape: {y_resampled.shape}")
-print(f"✅ 2단계 완료: 균형 데이터셋이 '{BALANCED_DATASET_PATH}'에 성공적으로 저장되었습니다.")
+print(f"2단계 완료: 균형 데이터셋이 '{BALANCED_DATASET_PATH}'에 성공적으로 저장되었습니다.")
 
 # ##############################################################################
 # @title 셀 10: 3단계 - 최종 훈련 준비
@@ -603,7 +603,7 @@ final_val_loader = DataLoader(final_val_dataset, batch_size=config.BATCH_SIZE, s
 print(f"최종 훈련 데이터: {len(final_train_dataset)}개, 최종 검증 데이터: {len(final_val_dataset)}개")
 
 # ##############################################################################
-# @title 셀 11 (수정됨): 🚀 3단계 - 최종 모델 훈련 실행
+# @title 셀 11 (수정됨): 3단계 - 최종 모델 훈련 실행
 # ##############################################################################
 print("--- 3단계: 최종 모델(Final Model) 훈련 시작 ---")
 
@@ -644,7 +644,7 @@ for epoch in range(config.FINAL_EPOCHS):
     if val_metrics['f1_score'] > best_f1_score:
         best_f1_score = val_metrics['f1_score']
         torch.save(final_model.state_dict(), FINAL_MODEL_PATH)
-        print(f"  -> 🎉 New best model saved with F1-Score: {best_f1_score:.4f}")
+        print(f"  -> New best model saved with F1-Score: {best_f1_score:.4f}")
 
 print("-" * 50)
 print(f"3단계 완료: 최종 모델이 '{FINAL_MODEL_PATH}'에 성공적으로 저장되었습니다.")

@@ -231,7 +231,7 @@ if not cap.isOpened():
     print("[ERROR] 카메라 열기 실패")
     raise SystemExit
 
-print("🟢 실행 중... 초기 키보드 자동 인식 대기 (약 3초) · ESC 종료")
+print("실행 중... 초기 키보드 자동 인식 대기 (약 3초) · ESC 종료")
 
 with mp_hands.Hands(
     max_num_hands=2,  # 양손 처리
@@ -379,4 +379,4 @@ with mp_hands.Hands(
 
 cap.release()
 cv2.destroyAllWindows()
-print("🛑 종료")
+print("종료")
